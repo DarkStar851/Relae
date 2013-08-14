@@ -1,3 +1,5 @@
+import threading
+
 class UIDGenerator(object):
     """A singleton object that generates unique ID integers."""
     __generator_exists = False
@@ -20,3 +22,13 @@ class UIDGenerator(object):
         return v
 
 global_id_generator = UIDGenerator(1)
+
+class MortalThread(threading.Thread):
+    """A thread that can be sent a terminate signal."""
+    
+    def __init__(self):
+        threading.Thread.__init__(self)
+        self.alivep = True
+
+    def terminate(self):
+        self.alivep = False

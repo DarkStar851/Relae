@@ -30,12 +30,10 @@ def ff_get_time(req):
     return (";", ())
 
 def ff_all_reminders(req):
-    return ("select src, msg from reminders where dest=? and date=?",
-                (req.destination, req.issue_time))
+    return ("select src,dest,msg from reminders where date=?", (req.issue_time))
 
 def ff_all_notifications(req):
-    return ("select src, msg from notifications where dest=?",
-                (req.destination))
+    return ("select src, msg from notifications where dest=?", (req.destination))
 
 def fb_remind(req, res):
     return "Reminder for {0} at {1} added successfully.".format(
@@ -48,7 +46,7 @@ def fb_get_time(req, res):
     return time.strftime(TIME_FMT, time.localtime())
 
 def fb_all_reminders(req, res):
-    return "\n".join("{0}, <{1}> {2}".format(req.destination, *r) for r in res)
+    return "\n".join("<{0}> {1}, {2}".format(*r) for r in res)
 
 def fb_all_notifications(req, res):
     return "\n".join("{0}, <{1}> {2}".format(req.destination, *r) for r in res)
