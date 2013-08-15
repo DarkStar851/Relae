@@ -1,4 +1,4 @@
 Relae
 =====
 
-Reminder and notification-handling daemon server
+Reminder and notification-handling server
