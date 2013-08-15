@@ -11,6 +11,14 @@ idgen = datatypes.global_id_generator
 # to an interface before closing the connection, to signal such an action.
 QUIT_MSG = "##QUIT-COMM##"
 
+# This message should be understood by interfaces to signal that the
+# name it wishes to assume is taken and it must respond with a new one.
+ID_TAKEN = "##IDNAME-TAKEN##"
+
+# This message signals to an interface that the id it wishes to use
+# is free and has been accepted.
+ID_VALID = "##IDNAME-VALID##"
+
 def tsepoch():
     """Time since the epoch as an integral value in minutes."""
     return int(time.time() * 1000000) / 60
@@ -133,6 +141,7 @@ class Server(datatypes.MortalThread):
         """Handles incoming requests and pushing responses out."""
 
         def __init__(self, dbfile, requests, req_event):
+            datatypes.MortalThread.__init__(self)
             self.dbfile = dbfile
             self.requests = requests
             self.response_events = {} # Maps interface IDs to response events.
@@ -165,3 +174,35 @@ class Server(datatypes.MortalThread):
                     self.response_events[iname].clear()
             dbconn.commit()
             dbcomm.close()
+
+    def __init__(self, dbfile, server_socket):
+        datatypes.MortalThread.__init__(self)
+        self.dbfile = dbfile
+        self.server = server_socket
+        self.requests = Queue.Queue()
+        self.request_e = threading.Event()
+
+    def run(self):
+        handler = RequestHandler(self.dbfile, self.requests, self.request_e)
+        handler.start()
+        workers = []
+        while self.alivep:
+            # Client connects over two sockets, one to send requests on,
+            # and one to receive responses from.
+            client_req = self.server.accept()[0]
+            client_res = self.server.accept()[0]
+            # Receive a unique ID for the interface.
+            client_idn = client_req.recv(1024)
+            while handler.has_interface(client_idn):
+                client_res.send(ID_TAKEN)
+                client_idn = client_req.recv(1024)
+            client_rqe = threading.Event()
+            client_rse = threading.Event()
+            handler.add_interface(client_idn, client_rqe)
+            client_res.send(ID_VALID
+            worker = Worker(client_req, client_res, client_rqe, client_rse)
+            workers.append(worker)
+            worker.start()
+        for worker in workers:
+            worker.terminate()
+            worker.join()
