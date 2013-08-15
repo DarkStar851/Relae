@@ -3,6 +3,7 @@ import threading
 import Queue
 
 import datatypes
+import dispatch
 
 idgen = datatypes.global_id_generator
 
@@ -17,7 +18,8 @@ def tsepoch():
 class Request(object):
     """Holds relevant information about a command received from an interface."""
     
-    def __init__(self, uid, requeue, src, dest, fn_name, created, date, msg):
+    def __init__(self, iname, uid, requeue, src, dest, fn_name, created, date, msg):
+        self.interface_name = iname
         self.unique_id = uid
         self.response_queue = requeue
         self.source = src
@@ -27,10 +29,10 @@ class Request(object):
         self.issue_time = date
         self.message = msg
 
-    def from_msg(message, uid, requeue):
+    def from_msg(iname, message, uid, requeue):
         """Parse messages of form SRC@DEST@FNNAME@CREATED@DATE@MESSAGE"""
         p = message.split('@')
-        return Request(uid, requeue, *p)
+        return Request(iname, uid, requeue, *p)
     
     from_msg = staticmethod(from_msg)
 
@@ -40,8 +42,9 @@ class Worker(datatypes.MortalThread):
     class Sleeper(datatypes.MortalThread):
         """Sleeps for some time before making a request for reminders."""
 
-        def __init__(self, interval, requeue, pending, pend_lock):
+        def __init__(self, iname, interval, requeue, pending, pend_lock):
             datatypes.MortalThread.__init__(self)
+            self.interface_name = iname
             self.sleep_time = interval
             self.requests = requeue
             self.pending = pending
@@ -52,7 +55,9 @@ class Worker(datatypes.MortalThread):
                 time.sleep(self.sleep_time)
                 requeue = Queue.Queue(1)
                 now = tsepoch()
-                req = Request(gid.new_id(), requeue, "", "", now, now, "")
+                req = Request(
+                    self.interface_name, gid.new_id(), requeue, 
+                    "", "", now, now, "")
                 self.pending_lock.acquire()
                 self.pending.append(requeue)
                 self.pending_lock.release()
@@ -60,9 +65,11 @@ class Worker(datatypes.MortalThread):
     class Reader(datatypes.MortalThread):
         """Listens for input from client's request socket."""
 
-        def __init__(self, insock, req_queue, pending, pend_lock):
+        def __init__(self, iname, insock, req_queue, reqevent, pending, pend_lock):
             datatypes.MortalThread.__init__(self)
+            self.interface_name = iname
             self.requests = insock
+            self.request_event = reqevent
             self.request_queue = req_queue
             self.pending = pending
             self.pending_lock = pend_lock
@@ -74,21 +81,26 @@ class Worker(datatypes.MortalThread):
                 if not data:
                     break
                 resqueue = Queue.Queue(1)
-                req = Request.from_msg(data, idgen.new_id(), resqueue)
+                req = Request.from_msg(
+                    self.interface_name, data, idgen.new_id(), resqueue)
                 self.pending_lock.acquire()
                 self.pending.append(resqueue)
                 self.pending_lock.release()
+                self.request_queue.put(req)
+                if not self.request_event.is_set():
+                    self.request_event.set()
     
-    def __init__(self, insock, outsock, resevent):
+    def __init__(self, insock, outsock, reqevent, resevent):
         datatypes.MortalThread.__init__(self)
         self.requests = insock
         self.responses = outsock
+        self.request_event = reqevent
         self.response_event = resevent
         self.pending_lock = threading.Lock()
         self.pending = []
 
     def run(self):
-        reader = Reader(self.requests, self.request_queue, 
+        reader = Reader(self.requests, self.request_queue, self.request_event,
                         self.pending, self.pending_lock)
         sleeper = Sleeper(1.0, self.request_queue, 
                           self.pending, self.pending_lock)
@@ -119,3 +131,37 @@ class Server(datatypes.MortalThread):
 
     class RequestHandler(datatypes.MortalThread):
         """Handles incoming requests and pushing responses out."""
+
+        def __init__(self, dbfile, requests, req_event):
+            self.dbfile = dbfile
+            self.requests = requests
+            self.response_events = {} # Maps interface IDs to response events.
+            self.request_event = req_event # Signal from workers for requests.
+
+        def has_interface(self, iname):
+            return iname in self.response_events.keys()
+        
+        def add_interface(self, iname, event):
+            self.response_events[iname] = event
+
+        def run(self):
+            dbconn = sqlite3.connect(self.dbfile)
+            cursor = dbconn.cursor()
+            cursor.execute(
+                "create table if not exists reminders (src text, dest text, created float, date float, msg text)")
+            cursor.execute(
+                "create table if not exists notifications (src text, dest text, created float, msg text)")
+            connection.commit()
+            while self.alivep:
+                self.request_event.wait()
+                while not self.requests.empty():
+                    req = self.requests.get()
+                    ff, fb = dispatch.dispatch_fns[req.function_name]
+                    sql, args = ff(req)
+                    cursor.execute(sql, args)
+                    req.response_queue.put(fb(cursor.fetchall()))
+                    self.response_events[req.interface_name].set()
+                for iname in self.response_events.keys()
+                    self.response_events[iname].clear()
+            dbconn.commit()
+            dbcomm.close()
