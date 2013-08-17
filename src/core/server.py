@@ -1,11 +1,17 @@
+import sys
 import time
 import threading
-import Queue
+import sqlite3
+import socket
+import Queue # Don't you hate how this is capitalized?
 
 import datatypes
 import dispatch
 
 idgen = datatypes.global_id_generator
+
+# The default file used for sqlite to store the database.
+DEFAULT_DB_FILE = "relae.db"
 
 # This message should be sent by any interface or worker connected
 # to an interface before closing the connection, to signal such an action.
@@ -200,10 +206,26 @@ class Server(datatypes.MortalThread):
             client_rqe = threading.Event()
             client_rse = threading.Event()
             handler.add_interface(client_idn, client_rqe)
-            client_res.send(ID_VALID
+            client_res.send(ID_VALID)
             worker = Worker(client_req, client_res, client_rqe, client_rse)
             workers.append(worker)
             worker.start()
         for worker in workers:
             worker.terminate()
             worker.join()
+
+def main(ip, port, dbfile):
+    server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_sock.bind((ip, port))
+    server_sock.listen(5) # Max allowed by most systems.
+    server = Server(dbfile, server_sock)
+    server.start()
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print "Usage: python ip port [database file]"
+        sys.exit(1)
+    if len(sys.argv) == 2:
+        main(sys.argv[1], int(sys.argv[2]), DEFAULT_DB_FILE)
+    else:
+        main(sys.argv[1], int(sys.argv[2]), sys.argv[3])
