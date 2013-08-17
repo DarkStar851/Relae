@@ -1,3 +1,5 @@
+import threading
+import Queue
 import time
 
 from twisted.words.protocols import irc
@@ -56,10 +58,30 @@ class Command(object):
         elif parts[0] == "showNotif":
             pass
 
+class Receiver(threading.Thread):
+    def __init__(self, response_sock):
+        threading.Thread.__init__(self)
+        self.responses = response_sock
+        self.queue = Queue.Queue()
+
+    def has_responses(self):
+        return not self.queue.empty()
+
+    def get_response(self):
+        return self.queue.get()
+
+    def run(self):
+        while 1:
+            data = self.responses.recv(4096)
+            if not data:
+                break
+            self.queue.put(data)
+
 class ReminderBot(irc.IRCClient):
     def __init__(self, responses, requests):
         self.responses = responses # Response socket
         self.requests = requests   # Requests socket
+        self.receiver = Receiver(self.responses)
 
     def _get_nickname(self):
         return self.factory.nickname
@@ -74,6 +96,7 @@ class ReminderBot(irc.IRCClient):
         print("Signed on as {0}.".format(self.nickname))
 
     def join(self, channel):
+        self.receiver.start()
         print("Joined {0}.".format(channel))
 
     def userJoined(self, user, channel):
@@ -92,6 +115,8 @@ class ReminderBot(irc.IRCClient):
         cmd = Command.parse(msg)
         self.requests.send("{0}@{1}@{2}@{3}@{4}@{5}".format(
             cmd.src, cmd.dest, cmd.fn, cmd.created, cmd.issue, cmd.msg))
+        while not self.receiver.has_responses():
+            self.say(channel, self.receiver.get_response())
 
 class ClientFactory(protocol.ClientFactory):
     protocol = ReminderBot
