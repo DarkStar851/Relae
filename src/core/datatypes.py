@@ -1,20 +1,20 @@
 import threading
 
+class GeneratorSingletonException(Exception):
+    def __init__(self):
+        Exception.__init__(self, "UIDGenerator must be unique.")
+        self.message = "UIDGenerator must be unique."
+
 class UIDGenerator(object):
     """A singleton object that generates unique ID integers."""
     __generator_exists = False
-
-    class GeneratorSingletonException(Exception):
-        def __init__(self):
-            Exception.__init__(self, "UIDGenerator must be unique.")
-            self.message = "UIDGenerator must be unique."
 
     def __init__(self, start_val):
         if not UIDGenerator.__generator_exists:
             UIDGenerator.__generator_exists = True
         else:
             raise GeneratorSingletonException()
-        self.start = start_value
+        self.start = start_val
 
     def new_id(self):
         v = self.start
@@ -32,3 +32,19 @@ class MortalThread(threading.Thread):
 
     def terminate(self):
         self.alivep = False
+
+class DebugWriter(object):
+    def __init__(self, outfile):
+        self.out = outfile
+
+    def error(self, msg):
+        self.out.write("[ERROR] " + msg)
+
+    def debug(self, msg):
+        self.out.write("[DEBUG] " + msg)
+
+    def notify(self, msg):
+        self.out.write("[NOTIFICATION] " + msg)
+
+    def status(self, msg):
+        self.out.write("[STATUS] " + msg)
