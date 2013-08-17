@@ -15,3 +15,9 @@ nickname = "Reminderbot"
 
 # Password for a registered nick.
 password = ""
+
+# IP for the Relae server.
+relae_ip = ""
+
+# Port to connect to the Relae server over.
+relae_port = 9001

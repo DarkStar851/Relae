@@ -1,4 +1,6 @@
 import threading
+import socket
+import random
 import Queue
 import time
 
@@ -8,11 +10,9 @@ from twisted.internet import reactor
 
 import config
 
-# TODO: Think of how to handle incoming responses.
-# Idea 1: Create a thread to handle it asynchronously. Very messy.
-# Idea 2: Check for responses when a message is received. Too synchronous?
-
 TIME_FMT = "%D-%H:%M:%S"
+ID_VALID = "##IDNAME-VALID##"
+ID_TAKEN = "##IDNAME-TAKEN##"
 
 # Didn't warrant importing.
 def tsepoch():
@@ -78,9 +78,9 @@ class Receiver(threading.Thread):
             self.queue.put(data)
 
 class ReminderBot(irc.IRCClient):
-    def __init__(self, responses, requests):
-        self.responses = responses # Response socket
-        self.requests = requests   # Requests socket
+    def __init__(self):
+        self.responses = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.requests = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.receiver = Receiver(self.responses)
 
     def _get_nickname(self):
@@ -92,6 +92,14 @@ class ReminderBot(irc.IRCClient):
     password = property(_get_password)
 
     def signedOn(self):
+        response = ""
+        self.requests.connect((config.relae_ip, config.relae_port))
+        self.responses.connect((config.relae_ip, config.relae_port))
+        # Connect to the server with a unique ID.
+        while response != ID_VALID:
+            self.requests.send("IRC_" +\
+                "".join(random.choice("1234567890") for i in range(4)))
+            response = self.responses.recv(1024)
         self.join(self.factory.channel)
         print("Signed on as {0}.".format(self.nickname))
 
@@ -109,7 +117,7 @@ class ReminderBot(irc.IRCClient):
         print("Disconnected - {0}".format(reason))
     
     def privmsg(self, user, channel, msg):
-        if not (msg.startswith(self.nickname + ", ") or \
+        if not (msg.startswith(self.nickname + ", ")) or \
             (msg.startswith(self.nickname + ": ")):
             return
         cmd = Command.parse(msg)
@@ -135,7 +143,10 @@ class ClientFactory(protocol.ClientFactory):
         print("Could not connect - {0}".format(reason))
 
 def main():
-    reactor.connectTCP(config.server, config.portno, ClientFactor())
+    if not config.relae_ip:
+        print("Pease edit config.py to provide a value for relae_ip.")
+        return
+    reactor.connectTCP(config.server, config.portno, ClientFactory())
     reactor.run()
 
 if __name__ == "__main__":
