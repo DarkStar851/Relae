@@ -34,17 +34,22 @@ class MortalThread(threading.Thread):
         self.alivep = False
 
 class DebugWriter(object):
-    def __init__(self, outfile):
+    def __init__(self, outfile, endline="\n"):
         self.out = outfile
+        self.endl = endline
+
+    def _write(self, prefix, msg):
+        self.out.write(prefix + " " + msg + self.endl)
+        self.out.flush()
 
     def error(self, msg):
-        self.out.write("[ERROR] " + msg)
+        self._write("[ERROR]",  msg)
 
     def debug(self, msg):
-        self.out.write("[DEBUG] " + msg)
+        self._write("[DEBUG]", msg)
 
     def notify(self, msg):
-        self.out.write("[NOTIFICATION] " + msg)
+        self._write("[NOTIFICATION]", msg)
 
     def status(self, msg):
-        self.out.write("[STATUS] " + msg)
+        self._write("[STATUS]", msg)
