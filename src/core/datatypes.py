@@ -1,5 +1,14 @@
 import threading
 
+class TermColors(object):
+    ERROR = "\033[91m"
+    DEBUG = "\033[96m"
+    NOTIFY = "\033[94m"
+    STATUS = "\033[92m"
+
+    def disable(self):
+        self.ERROR = self.DEBUG = self.NOTIFY = self.STATUS = ""
+
 class GeneratorSingletonException(Exception):
     def __init__(self):
         Exception.__init__(self, "UIDGenerator must be unique.")
@@ -43,13 +52,13 @@ class DebugWriter(object):
         self.out.flush()
 
     def error(self, msg):
-        self._write("[ERROR]",  msg)
+        self._write(TermColors.ERROR + "[-]",  msg)
 
     def debug(self, msg):
-        self._write("[DEBUG]", msg)
+        self._write(TermColors.DEBUG + "[~]", msg)
 
     def notify(self, msg):
-        self._write("[NOTIFICATION]", msg)
+        self._write(TermColors.NOTIFY + "[!]", msg)
 
     def status(self, msg):
-        self._write("[STATUS]", msg)
+        self._write(TermColors.STATUS + "[+]", msg)
