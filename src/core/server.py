@@ -68,7 +68,8 @@ class Sleeper(datatypes.MortalThread):
             requeue = Queue.Queue(1)
             now = tsepoch()
             req = Request(
-                self.interface_name, gid.new_id(), requeue, "","", now, now, "")
+                self.interface_name, idgen.new_id(), requeue, 
+                "", "", "allreminders", now, now, "")
             self.requests.put(req)
             debug.status("Issued request to check for reminders.")
             self.pending_lock.acquire()
@@ -108,8 +109,10 @@ class Reader(datatypes.MortalThread):
 class Worker(datatypes.MortalThread):
     """Communicates asynchronously with an interface to handle requests."""
     
-    def __init__(self, insock, outsock, reqevent, resevent):
+    def __init__(self, iname, requeue, insock, outsock, reqevent, resevent):
         datatypes.MortalThread.__init__(self)
+        self.iname = iname
+        self.request_queue = requeue
         self.requests = insock
         self.responses = outsock
         self.request_event = reqevent
@@ -118,9 +121,9 @@ class Worker(datatypes.MortalThread):
         self.pending = []
 
     def run(self):
-        reader = Reader(self.requests, self.request_queue, self.request_event,
-                        self.pending, self.pending_lock)
-        sleeper = Sleeper(1.0, self.request_queue, 
+        reader = Reader(self.iname, self.requests, self.request_queue, 
+            self.request_event, self.pending, self.pending_lock)
+        sleeper = Sleeper(self.iname, 60.0, self.request_queue, 
                           self.pending, self.pending_lock)
         reader.start()
         sleeper.start()
@@ -218,7 +221,8 @@ class Server(datatypes.MortalThread):
             client_rse = threading.Event()
             handler.add_interface(client_idn, client_rqe)
             client_res.send(ID_VALID)
-            worker = Worker(client_req, client_res, client_rqe, client_rse)
+            worker = Worker(client_idn, self.requests, client_req, 
+                client_res, client_rqe, client_rse)
             workers.append(worker)
             worker.start()
             debug.status("Spawned worker thread for {0}.".format(client_idn))
@@ -230,7 +234,7 @@ class Server(datatypes.MortalThread):
 def main(ip, port, dbfile):
     server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_sock.bind((ip, port))
-    server_sock.listen(5) # Max allowed by most systems.
+    server_sock.listen(10)
     server = Server(dbfile, server_sock)
     server.start()
     debug.status("Server started.")
