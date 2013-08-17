@@ -20,7 +20,7 @@ ID_TAKEN = "##IDNAME-TAKEN##"
 ID_VALID = "##IDNAME-VALID##"
 
 def tsepoch():
-    """Time since the epoch as an integral value in minutes."""
+    """Time since the epoch as an integral value measured in minutes."""
     return int(time.time() * 1000000) / 60
 
 class Request(object):
@@ -129,6 +129,7 @@ class Worker(datatypes.MortalThread):
                 self.pending_lock.release()
                 for response in responses:
                     self.responses.send(response)
+            self.response_event.clear()
         reader.terminate()
         sleeper.terminate()
         reader.join()
