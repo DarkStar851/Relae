@@ -55,8 +55,8 @@ class Command(object):
         """Parses IRC message into a Command object. Update along with core."""
         rule = None
         parsing = { 
-            "SRC"  : user,      "DEST" : None,  "FN"   : None, 
-            "CRE8" : tsepoch(), "DATE" : None,  "MSG"  : None
+            "SRC"  : user,      "DEST" : "",  "FN"   : "", 
+            "CRE8" : tsepoch(), "DATE" : "",  "MSG"  : ""
         }
         for syntax in grammar.keys():
             if re.match(syntax, msg) is not None:
@@ -72,7 +72,8 @@ class Command(object):
         if parsing["DATE"] is not None and isinstance(parsing["DATE"], str):
             parsing["DATE"] = int(time.mktime(
                 time.strptime(parsing["DATE"], TIME_FMT)) / 60)
-        return parsing
+        return Command(user, parsing["DEST"], parsing["FN"], 
+            parsing["CRE8"], parsing["DATE"], parsing["MSG"])
     parse = staticmethod(parse)
 
 class Receiver(threading.Thread):
@@ -145,11 +146,11 @@ class ReminderBot(irc.IRCClient):
         self.responses.close()
     
     def privmsg(self, user, channel, msg):
-        print msg
-        if not (msg.startswith(self.nickname + ", ")) or \
-            (msg.startswith(self.nickname + ": ")):
+        user = user.split("!")[0]
+        print user, msg
+        if not msg.startswith(self.nickname):    
             return
-        cmd = Command.parse(msg[msg.index(" ") + 1:])
+        cmd = Command.parse(user, msg[msg.index(" ") + 1:])
         print("Parsed command for function {0}.".format(cmd.fn))
         self.requests.send("{0}@{1}@{2}@{3}@{4}@{5}".format(
             cmd.src, cmd.dest, cmd.fn, cmd.created, cmd.issue, cmd.msg))
