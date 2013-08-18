@@ -15,6 +15,20 @@ ID_VALID = "##IDNAME-VALID##"
 ID_TAKEN = "##IDNAME-TAKEN##"
 QUIT_MSG = "##QUIT-COMM##"
 
+rules = {
+    "DATE" : "\d\d/\d\d/\d\d-\d\d:\d\d",
+    "USER" : "[\w\d\|_`-\[\]\^]+",
+    "MSG"  : ".+"
+}
+
+grammar = {
+    "remind"       : "remiand USER DATE MSG",
+    "notify"       : "notify USER DATE MSG",
+    "time"         : "get_time",
+    "allreminders" : "all_reminders DATE",
+    "allnotifies"  : "all_notifications USER"
+}
+
 # Didn't warrant importing.
 def tsepoch():
     """Same as in core. Returns minutes since the epoch."""
@@ -36,28 +50,10 @@ class Command(object):
         self.issue = issue      # Time to issue reminder. Minutes since epoch.
         self.msg = msg          # Message text for reminders/notifications.
 
+    # Expects that the "$NICK, " prefix has been removed.
     def parse(self, user, msg):
         """Parses IRC message into a Command object. Update along with core."""
-        parts = msg.split(" ")
-        now = time.tsepoch()
-        if parts[0] == "remind":
-            try:
-                dest, = parts[1]
-                issue = time_to_tse(parts[2])
-                msg = " ".join(parts[3:])
-                return Command(src, dest, "remind", now, issue, msg)
-            except Exception:
-                return None
-        # Implement the rest of the parsing for these.
-        # Would ideally like to find a better way to do it.
-        elif parts[0] == "notify":
-            pass
-        elif parts[0] == "getTime":
-            pass
-        elif parts[0] == "showRem":
-            pass
-        elif parts[0] == "showNotif":
-            pass
+        pass
 
 class Receiver(threading.Thread):
     def __init__(self, response_sock):
@@ -133,7 +129,8 @@ class ReminderBot(irc.IRCClient):
         if not (msg.startswith(self.nickname + ", ")) or \
             (msg.startswith(self.nickname + ": ")):
             return
-        cmd = Command.parse(msg)
+        cmd = Command.parse(msg[msg.index(" ") + 1:])
+        print("Parsed command for function {0}.".format(cmd.fn))
         self.requests.send("{0}@{1}@{2}@{3}@{4}@{5}".format(
             cmd.src, cmd.dest, cmd.fn, cmd.created, cmd.issue, cmd.msg))
         while not self.receiver.has_responses():
