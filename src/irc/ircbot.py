@@ -3,6 +3,7 @@ import socket
 import random
 import Queue
 import time
+import re
 
 from twisted.words.protocols import irc
 from twisted.internet import protocol
@@ -10,36 +11,35 @@ from twisted.internet import reactor
 
 import config
 
-TIME_FMT = "%D-%H:%M:%S"
+TIME_FMT = "%m/%d/%y-%H:%M"
 ID_VALID = "##IDNAME-VALID##"
 ID_TAKEN = "##IDNAME-TAKEN##"
 QUIT_MSG = "##QUIT-COMM##"
 
 rules = {
     "DATE" : "\d\d/\d\d/\d\d-\d\d:\d\d",
-    "USER" : "[\w\d\|_`-\[\]\^]+",
+    "DEST" : "[\w\d\|_`\-\[\]\^]+",
     "MSG"  : ".+"
 }
 
+reverse_rule = {}
+for rule in rules.keys():
+    reverse_rule[rules[rule]] = rule
+
+r = rules # Temporary short name.
 grammar = {
-    "remind"       : "remiand USER DATE MSG",
-    "notify"       : "notify USER DATE MSG",
-    "time"         : "get_time",
-    "allreminders" : "all_reminders DATE",
-    "allnotifies"  : "all_notifications USER"
+    "remind\s%s\s%s\s%s" %(r["DEST"], r["DATE"], r["MSG"]) : "remind",
+    "notify\s%s\s%s" %(r["DEST"], r["MSG"])                : "notify",
+    "get_time"                                             : "time",
+    "all_reminders\s%s" % r["DATE"]                        : "allreminders",
+    "all_notifications\s%s" % r["DEST"]                    : "allnotifies"
 }
+del r # Remove temporaryn name for rules variable.
 
 # Didn't warrant importing.
 def tsepoch():
     """Same as in core. Returns minutes since the epoch."""
-    return time.time() * 1000000 / 60
-
-def time_to_tse(ts):
-    """Convert a TIME_FMT formated time to time since epoch in minutes."""
-    datepart, timepart = ts.split("-")
-    m, d, y = map(int, datepart.split("/"))
-    h, mi, _ = map(int, timepart.split(":"))
-    return 525600 * (y + 30) + 43800 * m + 1440 * d + 60 * h + mi
+    return int(time.time() / 60)
 
 class Command(object):
     def __init__(self, src, dest, fn, created, issue, msg):
@@ -51,9 +51,29 @@ class Command(object):
         self.msg = msg          # Message text for reminders/notifications.
 
     # Expects that the "$NICK, " prefix has been removed.
-    def parse(self, user, msg):
+    def parse(user, msg):
         """Parses IRC message into a Command object. Update along with core."""
-        pass
+        rule = None
+        parsing = { 
+            "SRC"  : user,      "DEST" : None,  "FN"   : None, 
+            "CRE8" : tsepoch(), "DATE" : None,  "MSG"  : None
+        }
+        for syntax in grammar.keys():
+            if re.match(syntax, msg) is not None:
+                rule, parsing["FN"] = syntax, grammar[syntax]
+                break
+        if rule is None:
+            return None
+        msg = msg[msg.index(" ")+1:]
+        for token in rule.split("\\s")[1:]:
+            match = re.match(token, msg).group(0)
+            msg = msg[len(match)+1:]
+            parsing[reverse_rule[token]] = match
+        if parsing["DATE"] is not None and isinstance(parsing["DATE"], str):
+            parsing["DATE"] = int(time.mktime(
+                time.strptime(parsing["DATE"], TIME_FMT)) / 60)
+        return parsing
+    parse = staticmethod(parse)
 
 class Receiver(threading.Thread):
     def __init__(self, response_sock):

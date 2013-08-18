@@ -15,7 +15,7 @@ notifications - Notifications to be issued when a user is next seen online.
 
 import time
 
-TIME_FMT = "%D-%H:%M:%S"
+TIME_FMT = "%m/%d/%y-%H:%M:%S"
 
 def ff_remind(req):
     return ("insert into reminders (src,dest,created,date,msg) values(?,?,?,?)",
