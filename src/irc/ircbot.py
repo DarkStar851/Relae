@@ -13,6 +13,7 @@ import config
 TIME_FMT = "%D-%H:%M:%S"
 ID_VALID = "##IDNAME-VALID##"
 ID_TAKEN = "##IDNAME-TAKEN##"
+QUIT_MSG = "##QUIT-COMM##"
 
 # Didn't warrant importing.
 def tsepoch():
@@ -24,7 +25,7 @@ def time_to_tse(ts):
     datepart, timepart = ts.split("-")
     m, d, y = map(int, datepart.split("/"))
     h, mi, _ = map(int, timepart.split(":"))
-    return 525600 * y + 43800 * m + 1440 * d + 60 * h + mi
+    return 525600 * (y + 30) + 43800 * m + 1440 * d + 60 * h + mi
 
 class Command(object):
     def __init__(self, src, dest, fn, created, issue, msg):
@@ -82,6 +83,7 @@ class ReminderBot(irc.IRCClient):
         self.responses = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.requests = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.receiver = Receiver(self.responses)
+        self.interface_name = ""
 
     def _get_nickname(self):
         return self.factory.nickname
@@ -93,18 +95,24 @@ class ReminderBot(irc.IRCClient):
 
     def signedOn(self):
         response = ""
+        print("Signed on as {0}.".format(self.nickname))
         self.requests.connect((config.relae_ip, config.relae_port))
         self.responses.connect((config.relae_ip, config.relae_port))
-        # Connect to the server with a unique ID.
+        print("Connected to ({0}, {1}).".format(
+            config.relae_ip, config.relae_port))
+        response, iname = "", ""
         while response != ID_VALID:
-            self.requests.send("IRC_" +\
-                "".join(random.choice("1234567890") for i in range(4)))
+            iname = "IRC_" + "".join(
+                random.choice("1234567890") for i in range(5))
+            self.requests.send(iname)
+            print("Trying to register name " + iname)
             response = self.responses.recv(1024)
-        self.join(self.factory.channel)
-        print("Signed on as {0}.".format(self.nickname))
-
-    def join(self, channel):
+        self.interface_name = iname
+        print("Selected interface name {0}.".format(self.interface_name))
         self.receiver.start()
+        self.join(self.factory.channel)
+
+    def joined(self, channel):
         print("Joined {0}.".format(channel))
 
     def userJoined(self, user, channel):
@@ -115,8 +123,13 @@ class ReminderBot(irc.IRCClient):
 
     def connectionLost(self, reason):
         print("Disconnected - {0}".format(reason))
+        self.receiver.terminate()
+        self.requests.send(QUIT_MSG)
+        self.requests.close()
+        self.responses.close()
     
     def privmsg(self, user, channel, msg):
+        print msg
         if not (msg.startswith(self.nickname + ", ")) or \
             (msg.startswith(self.nickname + ": ")):
             return
