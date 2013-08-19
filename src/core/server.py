@@ -149,6 +149,9 @@ class Worker(datatypes.MortalThread):
             self.response_event.clear()
         reader.terminate()
         sleeper.terminate()
+        self.requests.close()
+        self.responses.send(QUIT_MSG)
+        self.responses.close()
         reader.join()
         sleeper.join()
 
@@ -231,7 +234,13 @@ class Server(datatypes.MortalThread):
             debug.status("Spawned worker thread for {0}.".format(client_idn))
         for worker in workers:
             worker.terminate()
+            # Cause the worker to stop waiting, do one last cycle, and exit.
+            worker.response_event.set()
             worker.join()
+        handler.terminate()
+        # Signal a request event so the handler can exit.
+        self.request_e.set()
+        handler.join()
         debug.status("All workers terminated.")
 
 def main(ip, port, dbfile):
@@ -246,6 +255,15 @@ def main(ip, port, dbfile):
             time.sleep(100)
     except Exception:
         server.terminate()
+        # Need to complete a connection for Server to check its status.
+        s1, s2 = [socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
+                  for i in range(2)]
+        s1.connect((ip, port))
+        s2.connect((ip, port))
+        s1.send("".join(random.choice("123457890") for i in range(64)))
+        s2.recv(1024)
+        s1.close()
+        s2.close()
         server.join()
     print("Server terminated.")
 
