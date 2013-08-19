@@ -147,15 +147,14 @@ class ReminderBot(irc.IRCClient):
     
     def privmsg(self, user, channel, msg):
         user = user.split("!")[0]
-        print user, msg
+        while self.receiver.has_responses():
+            self.say(channel, self.receiver.get_response())
         if not msg.startswith(self.nickname):    
             return
         cmd = Command.parse(user, msg[msg.index(" ") + 1:])
         print("Parsed command for function {0}.".format(cmd.fn))
         self.requests.send("{0}@{1}@{2}@{3}@{4}@{5}".format(
             cmd.src, cmd.dest, cmd.fn, cmd.created, cmd.issue, cmd.msg))
-        while not self.receiver.has_responses():
-            self.say(channel, self.receiver.get_response())
 
 class ClientFactory(protocol.ClientFactory):
     protocol = ReminderBot

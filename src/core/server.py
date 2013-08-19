@@ -54,13 +54,14 @@ class Request(object):
 class Sleeper(datatypes.MortalThread):
     """Sleeps for some time before making a request for reminders."""
 
-    def __init__(self, iname, interval, requeue, pending, pend_lock):
+    def __init__(self, iname, interval, requeue, pending, pend_lock, req_event):
         datatypes.MortalThread.__init__(self)
         self.interface_name = iname
         self.sleep_time = interval
         self.requests = requeue
         self.pending = pending
         self.pending_lock = pend_lock
+        self.request_event = req_event
 
     def run(self):
         while self.alivep:
@@ -75,6 +76,7 @@ class Sleeper(datatypes.MortalThread):
             self.pending_lock.acquire()
             self.pending.append(requeue)
             self.pending_lock.release()
+            self.request_event.set()
 
 class Reader(datatypes.MortalThread):
     """Listens for input from client's request socket."""
@@ -98,13 +100,13 @@ class Reader(datatypes.MortalThread):
             resqueue = Queue.Queue(1)
             req = Request.from_msg(
                 self.interface_name, data, idgen.new_id(), resqueue)
-            debug.debug("Successfully parsed into request object.")
+            debug.debug("Successfully parsed into request object #{0}.".format(
+                req.unique_id))
             self.pending_lock.acquire()
             self.pending.append(resqueue)
             self.pending_lock.release()
             self.request_queue.put(req)
-            if not self.request_event.is_set():
-                self.request_event.set()
+            self.request_event.set()
 
 class Worker(datatypes.MortalThread):
     """Communicates asynchronously with an interface to handle requests."""
@@ -124,26 +126,22 @@ class Worker(datatypes.MortalThread):
         reader = Reader(self.iname, self.requests, self.request_queue, 
             self.request_event, self.pending, self.pending_lock)
         sleeper = Sleeper(self.iname, 60.0, self.request_queue, 
-                          self.pending, self.pending_lock)
+                          self.pending, self.pending_lock, self.request_event)
         reader.start()
         sleeper.start()
         debug.debug("Reader and sleeper threads started.")
         while self.alivep:
             self.response_event.wait()
-            while 1: # Conditioned on pending items existing
-                self.pending_lock.acquire()
-                if not self.pending:
-                    self.pending_lock.release()
-                    break
-                responses = []
-                for pending in self.pending:
-                    if not pending.empty():
-                        responses.append(pending.get())
-                        self.pending.remove(pending)
-                self.pending_lock.release()
-                for response in responses:
-                    self.responses.send(response)
-                    debug.debug("Sent response {0}.".format(response))
+            responses = []
+            self.pending_lock.acquire()
+            for pending in self.pending:
+                if not pending.empty():
+                    responses.append(pending.get())
+                    self.pending.remove(pending)
+            self.pending_lock.release()
+            for response in responses:
+                self.responses.send(response)
+                debug.debug("Sent response {0}.".format(response))
             self.response_event.clear()
         reader.terminate()
         sleeper.terminate()
@@ -169,24 +167,26 @@ class RequestHandler(datatypes.MortalThread):
     def run(self):
         dbconn = sqlite3.connect(self.dbfile)
         cursor = dbconn.cursor()
-        cursor.execute(
-            "create table if not exists reminders (src text, dest text, created float, date float, msg text)")
-        cursor.execute(
-            "create table if not exists notifications (src text, dest text, created float, msg text)")
+        cursor.execute("create table if not exists reminders " +\
+            "(src text, dest text, created float, date float, msg text)")
+        cursor.execute("create table if not exists notifications " +\
+            "(src text, dest text, created float, msg text)")
         dbconn.commit()
         debug.status("Connection to database established.")
         while self.alivep:
             self.request_event.wait()
+            debug.debug("Request event triggered.")
             while not self.requests.empty():
                 req = self.requests.get()
                 ff, fb = dispatch.dispatch_fns[req.function_name]
                 sql, args = ff(req)
                 cursor.execute(sql, args)
-                req.response_queue.put(fb(cursor.fetchall()))
+                req.response_queue.put(fb(req, cursor.fetchall()))
                 self.response_events[req.interface_name].set()
                 debug.debug("Handled request #{0}.".format(req.unique_id))
             for iname in self.response_events.keys():
                 self.response_events[iname].clear()
+            self.request_event.clear()
         dbconn.commit()
         dbcomm.close()
 
@@ -217,12 +217,11 @@ class Server(datatypes.MortalThread):
                 client_res.send(ID_TAKEN)
                 client_idn = client_req.recv(1024)
             debug.status("ID {0} set for new interface.".format(client_idn))
-            client_rqe = threading.Event()
             client_rse = threading.Event()
-            handler.add_interface(client_idn, client_rqe)
+            handler.add_interface(client_idn, client_rse)
             client_res.send(ID_VALID)
             worker = Worker(client_idn, self.requests, client_req, 
-                client_res, client_rqe, client_rse)
+                client_res, self.request_e, client_rse)
             workers.append(worker)
             worker.start()
             debug.status("Spawned worker thread for {0}.".format(client_idn))
