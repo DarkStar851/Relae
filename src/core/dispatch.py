@@ -35,6 +35,12 @@ def ff_all_reminders(req):
 def ff_all_notifications(req):
     return ("select src, msg from notifications where dest=?", (req.destination,))
 
+def ff_rm_reminders(req):
+    return ("delete from reminders where date<=?", (req.time_created,))
+
+def ff_rm_notifications(req):
+    return ("delete from notifications where dest=?", (req.destination,))
+
 def fb_remind(req, res):
     print "issue_time", req.issue_time, type(req.issue_time)
     return "Reminder for {0} at {1} added successfully.".format(
@@ -54,11 +60,18 @@ def fb_all_reminders(req, res):
 def fb_all_notifications(req, res):
     return "\n".join("{0}, <{1}> {2}".format(req.destination, *r) for r in res)
 
+def fb_rm_reminders(req, res):
+    return ""
+
+def fb_rm_notifications(req, res):
+    return ""
 
 dispatch_fns = {
     "remind"       : (ff_remind, fb_remind),
     "notify"       : (ff_notify, fb_notify),
     "time"         : (ff_get_time, fb_get_time),
     "allreminders" : (ff_all_reminders, fb_all_reminders),
-    "allnotifies"  : (ff_all_notifications, fb_all_notifications)
+    "allnotifies"  : (ff_all_notifications, fb_all_notifications),
+    "rmreminders"  : (ff_rm_reminders, fb_rm_reminders),
+    "rmnotifies"   : (ff_rm_notifications, fb_rm_notifications)
 }

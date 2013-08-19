@@ -66,15 +66,19 @@ class Sleeper(datatypes.MortalThread):
     def run(self):
         while self.alivep:
             time.sleep(self.sleep_time)
-            requeue = Queue.Queue(1)
+            requeue1 = Queue.Queue(1)
+            requeue2 = Queue.Queue(1)
             now = tsepoch()
-            req = Request(
-                self.interface_name, idgen.new_id(), requeue, 
+            req1 = Request(self.interface_name, idgen.new_id(), requeue1,
                 "", "", "allreminders", now, now, "")
-            self.requests.put(req)
+            req2 = Request(self.interface_name, idgen.new_id(), requeue2,
+                "", "", "rmreminders", now, now, "")
+            self.requests.put(req1)
+            self.requests.put(req2)
             debug.status("Issued request to check for reminders.")
             self.pending_lock.acquire()
-            self.pending.append(requeue)
+            self.pending.append(requeue1)
+            self.pending.append(requeue2)
             self.pending_lock.release()
             self.request_event.set()
 
