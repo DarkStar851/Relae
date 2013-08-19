@@ -40,8 +40,8 @@ class Request(object):
         self.source = src
         self.destination = dest
         self.function_name = fn_name
-        self.time_created = created
-        self.issue_time = date
+        self.time_created = int(created)
+        self.issue_time = int(date)
         self.message = msg
 
     def from_msg(iname, message, uid, requeue):

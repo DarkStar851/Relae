@@ -133,12 +133,14 @@ class ReminderBot(irc.IRCClient):
         print("Joined {0}.".format(channel))
 
     def userJoined(self, user, channel):
-        now = time.time()
-        a, b = self.nickname, user
-        self.requests.send("{0}@{1}@{2}@{3}@{4}@''".format(
-            a, b, "allnotifies", now, now))
-        self.requests.send("{0}@{1}@{2}@{3}@{4}@''".format(
-            a, b, "rmnotifies", now, now))
+        now = tsepoch()
+        a, b = self.nickname, user.split('!')[0]
+        m = "{0}@{1}@{2}@{3}@{4}@".format(a, b, "allnotifies", now, now)
+        print("Receive notifications msg: " + m)
+        self.requests.send(m)
+        m = "{0}@{1}@{2}@{3}@{4}@".format(a, b, "rmnotifies", now, now)
+        print("Delete notifications msg: " + m)
+        self.requests.send(m)
 
     def connectionLost(self, reason):
         print("Disconnected - {0}".format(reason))

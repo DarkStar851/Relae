@@ -42,7 +42,6 @@ def ff_rm_notifications(req):
     return ("delete from notifications where dest=?", (req.destination,))
 
 def fb_remind(req, res):
-    print "issue_time", req.issue_time, type(req.issue_time)
     return "Reminder for {0} at {1} added successfully.".format(
                 req.destination, time.strftime(
                     TIME_FMT, time.localtime(int(req.issue_time) * 60)))
