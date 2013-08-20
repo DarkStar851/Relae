@@ -12,5 +12,5 @@ else
 	echo "password = ''" >> /relae/src/irc/config.py
 	echo "relae_ip = '$1'" >> /relae/src/irc/config.py
 	echo "relae_port = $2" >> /relae/src/irc/config.py
-	python /relae/src/irc/ircbot.py &
+	python /relae/src/irc/ircbot.py
 fi
