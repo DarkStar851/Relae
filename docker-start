@@ -1,0 +1,16 @@
+#!/bin/bash
+if [ -z "$1" ]; then
+	echo "Usage: /start core_ip core_port irc_server irc_port irc_chan irc_nick";
+	echo "Please do not include the # when specifying the irc chan.";
+else
+	python /relae/src/core/server.py $1 $2 &
+	echo "database = 'relae.db'" > /relae/src/irc/config.py
+	echo "server = '$3'" >> /relae/src/irc/config.py
+	echo "portno = $4" >> /relae/src/irc/config.py
+	echo "channel = '$5'" >> /relae/src/irc/config.py
+	echo "nickname = '$6'" >> /relae/src/irc/config.py
+	echo "password = ''" >> /relae/src/irc/config.py
+	echo "relae_ip = '$1'" >> /relae/src/irc/config.py
+	echo "relae_port = $2" >> /relae/src/irc/config.py
+	python /relae/src/irc/ircbot.py &
+fi
