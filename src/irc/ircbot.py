@@ -69,7 +69,7 @@ class Command(object):
             match = re.match(token, msg).group(0)
             msg = msg[len(match)+1:]
             parsing[reverse_rule[token]] = match
-        if parsing["DATE"] is not None and isinstance(parsing["DATE"], str):
+        if parsing is not None and len(parsing["DATE"]) > 0:
             parsing["DATE"] = int(time.mktime(
                 time.strptime(parsing["DATE"], TIME_FMT)) / 60)
         return Command(user, parsing["DEST"], parsing["FN"], 
@@ -136,10 +136,9 @@ class ReminderBot(irc.IRCClient):
         now = tsepoch()
         a, b = self.nickname, user.split('!')[0]
         m = "{0}@{1}@{2}@{3}@{4}@".format(a, b, "allnotifies", now, now)
-        print("Receive notifications msg: " + m)
         self.requests.send(m)
+        time.sleep(2.0) # Sending messages too soon causes both to merge.
         m = "{0}@{1}@{2}@{3}@{4}@".format(a, b, "rmnotifies", now, now)
-        print("Delete notifications msg: " + m)
         self.requests.send(m)
 
     def connectionLost(self, reason):

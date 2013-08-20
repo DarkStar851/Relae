@@ -23,7 +23,7 @@ def ff_remind(req):
                                                                   req.message))
 
 def ff_notify(req):
-    return ("insert into notifications (src,dest,created,msg) values(?,?,?)",
+    return ("insert into notifications (src,dest,created,msg) values(?,?,?,?)",
                 (req.source, req.destination, req.time_created, req.message))
 
 def ff_get_time(req):

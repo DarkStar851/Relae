@@ -28,7 +28,7 @@ ID_VALID = "##IDNAME-VALID##"
 
 def tsepoch():
     """Time since the epoch as an integral value measured in minutes."""
-    return int(time.time() * 1000000) / 60
+    return int(time.time() / 60)
 
 class Request(object):
     """Holds relevant information about a command received from an interface."""
@@ -41,12 +41,13 @@ class Request(object):
         self.destination = dest
         self.function_name = fn_name
         self.time_created = int(created)
-        self.issue_time = int(date)
+        self.issue_time = int(date) if date else 0
         self.message = msg
 
     def from_msg(iname, message, uid, requeue):
         """Parse messages of form SRC@DEST@FNNAME@CREATED@DATE@MESSAGE"""
         p = message.split('@')
+        debug.debug("from_msg p = " + str(p))
         return Request(iname, uid, requeue, *p)
     
     from_msg = staticmethod(from_msg)
