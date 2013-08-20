@@ -1,3 +1,4 @@
+## This file will be dynamically replaced by the start script ##
 # Name of the database file to store reminders and notifications in.
 database = "relae.db"
 
