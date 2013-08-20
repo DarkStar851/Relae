@@ -4,7 +4,6 @@ import random
 import Queue
 import time
 import re
-import sys
 
 from twisted.words.protocols import irc
 from twisted.internet import protocol
@@ -188,21 +187,8 @@ def main():
     if not config.relae_ip:
         print("Pease edit config.py to provide a value for relae_ip.")
         return
-#    config.server = net
-#    config.channel = "#%s" % chan
-#    config.nickname = nick
-#    config.relae_ip = core
-#    config.relae_port = port
     reactor.connectTCP(config.server, config.portno, ClientFactory())
     reactor.run()
 
 if __name__ == "__main__":
     main()
-#    print sys.argv
-#    if len(sys.argv) < 4:
-#        print "Usage: python irc_network (no #)irc_chan irc_nick [core_ip=127.0.0.1] [core_port=9001]"
-#        sys.exit(1)
-#    if len(sys.argv) == 4:
-#        main(sys.argv[1], sys.argv[2], sys.argv[3], '127.0.0.1', 9001)
-#    else:
-#        main(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], int(sys.argv[5]))
