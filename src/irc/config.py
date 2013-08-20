@@ -1,23 +1,8 @@
-# Name of the database file to store reminders and notifications in.
-database = "relae.db"
-
-# IRC server to connect to on startup.
-server = "irc.rizon.net"
-
-# Port to connect to the server via.
+database = 'relae.db'
+server = 'irc.freenode.net
 portno = 6667
-
-# Channel for the bot to join.
-channel = "relaetest"
-
-# Nickname assumed by the bot for communication and command.
-nickname = "Reminderbot"
-
-# Password for a registered nick.
-password = ""
-
-# IP for the Relae server.
-relae_ip = ""
-
-# Port to connect to the Relae server over.
+channel = 'relaetest'
+nickname = 'Dergs'
+password = ''
+relae_ip = '127.0.0.1'
 relae_port = 9001
