@@ -64,8 +64,14 @@ class Command(object):
                 break
         if rule is None:
             return None
-        msg = msg[msg.index(" ")+1:]
+        if msg.strip().count(' ') == 0:
+            # Nothing to parse here
+            return Command(user, "", parsing["FN"], parsing["CRE8"], "", "")
+        msg = msg[msg.index(" ")+1:].strip()
         for token in rule.split("\\s")[1:]:
+            # In case insufficient arguments were passed.
+            if not msg:
+                return None
             match = re.match(token, msg).group(0)
             msg = msg[len(match)+1:]
             parsing[reverse_rule[token]] = match
@@ -155,6 +161,8 @@ class ReminderBot(irc.IRCClient):
         if not msg.startswith(self.nickname):    
             return
         cmd = Command.parse(user, msg[msg.index(" ") + 1:])
+        if cmd is None:
+            return
         print("Parsed command for function {0}.".format(cmd.fn))
         self.requests.send("{0}@{1}@{2}@{3}@{4}@{5}".format(
             cmd.src, cmd.dest, cmd.fn, cmd.created, cmd.issue, cmd.msg))
