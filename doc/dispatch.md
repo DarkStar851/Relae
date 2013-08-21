@@ -1,7 +1,7 @@
 # Dispatch Functions
 
 When Relae receives a request message, it parses the information from the
-message into a Request object (defined in src/core/server.py), and this
+message into a Request object (defined in _src/core/server.py_), and this
 Request object is then passed as an argument first into a feedforward function
 and again passed, along with the results of the query performed, into the
 appropriate feedback function.

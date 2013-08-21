@@ -22,8 +22,8 @@ chosen by the connecting interface.  The protocol is as follows:
 5. Upon receiving ID_TAKEN, the interface must create a new ID and send on s1.
 6. This continues until the interface receives ID_VALID.
 
-ID_TAKEN is defined in Relae as the string "##IDNAME-TAKEN##"
-ID_VALID is defined in Relae as the string "##IDNAME-VALID##"
+. ID_TAKEN is defined in Relae as the string "##IDNAME-TAKEN##"
+. ID_VALID is defined in Relae as the string "##IDNAME-VALID##"
 
 ## Request Messages
 
@@ -32,14 +32,14 @@ as follows:
 
 SOURCE@DEST@FNNAME@CREATED@DATE@MSG
 
-SOURCE is the name of the user issuing the command.
-DEST is the name of the user for whom the command is targetted.  For instance,
+. SOURCE is the name of the user issuing the command.
+. DEST is the name of the user for whom the command is targetted.  For instance,
 the user for whom a reminder or notification is to be issued.
-FNNAME is the parsed name of the function determined to be associated with the
-command being issued.  See src/core/dispatch.py for the list of existing names.
-CREATED is the number of minutes since the epoch in minutes (as an integer),
+. FNNAME is the parsed name of the function determined to be associated with the
+command being issued.  See _src/core/dispatch.py_ for the list of existing names.
+. CREATED is the number of minutes since the epoch in minutes (as an integer),
 the time at which the command was issued.
-DATE is also the time since the epoch in minutes and should be the date that a
+. DATE is also the time since the epoch in minutes and should be the date that a
 reminder should be issued.  In the case of commands with immediate feedback as
 well as notifications, the value of this field does not matter.
-MSG is the message to be delivered along with a reminder or notification.
+. MSG is the message to be delivered along with a reminder or notification.
