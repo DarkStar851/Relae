@@ -141,7 +141,11 @@ class Worker(datatypes.MortalThread):
             self.pending_lock.acquire()
             for pending in self.pending:
                 if not pending.empty():
-                    responses.append(pending.get())
+                    # Check that there's anything worth sending.
+                    data = pending.get()
+                    if len(data) <= 1:
+                        continue
+                    responses.append(data)
                     self.pending.remove(pending)
             self.pending_lock.release()
             for response in responses:
