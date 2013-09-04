@@ -106,7 +106,6 @@ class ReminderBot(irc.IRCClient):
         self.responses = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.requests = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.receiver = Receiver(self.responses)
-        self.interface_name = ""
 
     def _get_nickname(self):
         return self.factory.nickname
@@ -123,15 +122,6 @@ class ReminderBot(irc.IRCClient):
         self.responses.connect((config.relae_ip, config.relae_port))
         print("Connected to ({0}, {1}).".format(
             config.relae_ip, config.relae_port))
-        response, iname = "", ""
-        while response != ID_VALID:
-            iname = "IRC_" + "".join(
-                random.choice("1234567890") for i in range(5))
-            self.requests.send(iname)
-            print("Trying to register name " + iname)
-            response = self.responses.recv(1024)
-        self.interface_name = iname
-        print("Selected interface name {0}.".format(self.interface_name))
         self.receiver.start()
         self.join(self.factory.channel)
 
