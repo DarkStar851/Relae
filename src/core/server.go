@@ -3,6 +3,9 @@ package main
 import (
     "database/sql"
     "fmt"
+    "log"
+    "net"
+    "time"
     "strings"
     "strconv"
 )
@@ -47,7 +50,7 @@ func CreateIDGenerator(start int64) (func () int64) {
     }
 }
 
-func HandleRequests(dbdriver, dbfilename string, req chan Request) {
+func HandleRequests(dbdriver, dbfilename string, req chan Request, dead *bool) {
     db, err = sql.Open(dbdriver, dbfilename)
     if err != nil {
         log.Fatal(err)
@@ -58,7 +61,7 @@ func HandleRequests(dbdriver, dbfilename string, req chan Request) {
     db.Exec("create table if not exists notifications " +\
             "(src text, dest text, created float, msg text)")
     tx, _ = db.Begin()
-    for !KILLFLAG {
+    for !*dead {
         r := <-req
         dispatchFn, err := dispatch.Mapping[r.FunctionName]
         if err != nil {
@@ -68,6 +71,25 @@ func HandleRequests(dbdriver, dbfilename string, req chan Request) {
         r.Responses <- dispatchFn(r.Cmd, tx)
     }
     tx.Commit()
+}
+
+func IssueReminders(iname string, sleepSec time.Duration, req chan Request, dead *bool) {
+    for !*dead {
+        time.Sleep(sleepSec)
+        // Create reminder request and communicate result.
+    }
+}
+
+func ReadFromInterface(iname string, in *net.TCPConn, req chan Request, dead *bool) {
+    buffer := make([]byte, 1024)
+    quit := []byte(QUIT_MSG)
+    for !(*dead || bytes.Equal(buffer, quit)) {
+        n, err := in.Read(buffer)
+        if err != nil {
+            break
+        }
+
+    }
 }
 
 func main() {
