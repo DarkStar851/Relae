@@ -23,7 +23,7 @@ func ReadFromInterface(in *net.TCPConn, req chan Request, res chan string, kille
     buffer := make([]byte, 1024)
     quit := []byte(QUIT_MSG)
     for !*killed {
-        n, err := in.Read(buffer)
+        _, err := in.Read(buffer)
         if bytes.Equal(buffer, quit) || err != nil {
             break
         }
@@ -45,8 +45,9 @@ func (w *Worker) StartWorking(req chan Request, killed *bool) {
             break
         }
         for response := pending.Front(); response != nil; {
+            responseChan := response.Value.(chan string)
             select {
-            case r := <-(chan string)(response.Value):
+            case r := <-responseChan:
                 w.Output.Write([]byte(r))
                 rcopy := response
                 response = response.Next()

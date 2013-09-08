@@ -77,9 +77,9 @@ func RmNotifications(cmd Command, tx *sql.Tx, db *sql.DB) string {
     return ""
 }
 
-type dispatchFn func(cmd Command, tx *sql.Tx, db *sql.DB) string
+type dispatchFn func(Command, *sql.Tx, *sql.DB) string
 
-Mapping := map[string]dispatchFn{
+var Mapping map[string]dispatchFn = map[string]dispatchFn {
     "remind"      : Remind,
     "notify"      : Notify,
     "time"        : GetTime,
