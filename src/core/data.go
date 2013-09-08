@@ -1,3 +1,5 @@
+package main
+
 import (
     "strings"
     "strconv"
@@ -11,8 +13,8 @@ const (
     QUIT_MSG string = "##QUIT-COMM##"
     ID_TAKEN string = "##IDNAME-TAKEN##"
     ID_VALID string = "##IDNAME-VALID##"
-    MAX_CONNECTIONS int32 = 10
-    REMINDE_INTERVAL time.DURATION = 60
+    MAX_CONNECTIONS int = 10
+    REMINDER_INTERVAL time.Duration = 60
 )
 
 type Command struct {
@@ -37,8 +39,15 @@ type Worker struct {
 }
 
 func ParseRequest(msg string, res chan string) Request {
-    p := strings.Split(msg)
-    i1 := strconv.ParseInt(p[3], 10, 64)
-    i2 := strconv.ParseInt(p[4], 10, 64)
+    p := strings.Split(msg, "@")
+    i1, e1 := strconv.ParseInt(p[3], 10, 64)
+    i2, e2 := strconv.ParseInt(p[4], 10, 64)
+    current := time.Now().Unix()
+    if e1 != nil {
+        i1 = current
+    }
+    if e2 != nil {
+        i2 = current
+    }
     return Request{Command{p[0], p[1], p[2], i1, i2, p[5]}, res}
 }
