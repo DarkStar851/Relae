@@ -1,6 +1,7 @@
 package main
 
 import (
+    _ "github.com/mattn/go-sqlite3"
 	"bytes"
 	"container/list"
 	"database/sql"
@@ -90,6 +91,7 @@ func HandleRequests(req chan Request, dbfile, dbdriver string, killed *bool) {
 	db, err := sql.Open(dbdriver, dbfile)
 	if err != nil {
 		*killed = true
+        log.Println(err)
 		log.Fatal("Cannot access database " + dbfile)
 		return
 	}
