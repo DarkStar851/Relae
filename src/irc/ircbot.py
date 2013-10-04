@@ -122,6 +122,10 @@ class ReminderBot(irc.IRCClient):
         self.responses.connect((config.relae_ip, config.relae_port))
         print("Connected to ({0}, {1}).".format(
             config.relae_ip, config.relae_port))
+        while response != ID_VALID:
+            idcode = ''.join(random.choice('0123456789') for i in range(3))
+            self.requests.send("IRC_rb" + idcode)
+            response = self.responses.recv(1024)
         self.receiver.start()
         self.join(self.factory.channel)
 
