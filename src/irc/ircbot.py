@@ -36,6 +36,23 @@ grammar = {
 }
 del r # Remove temporaryn name for rules variable.
 
+fundesc = {
+    "remind" : "remind <destination> <date> <message>",
+    "notify" : "notify <destination> <message>",
+    "get_time" : "get_time",
+    "all_reminders" : "all_reminders <date>",
+    "all_notifications" : "all_notifications <destination>"
+}
+
+helpers = [
+    "help <fn> : See the grammar for a function.",
+    "remind : Issue a reminder for a user at a specific time.",
+    "notify : Message a user with a message the next time they are seen.",
+    "get_time : Get the current time, formatted the way remind expects.",
+    "all_reminders : Get all the reminders stored for earlier than a given time.",
+    "all_notifications : Get all the notifications set for a user."
+]
+
 # Didn't warrant importing.
 def tsepoch():
     """Same as in core. Returns minutes since the epoch."""
@@ -154,8 +171,20 @@ class ReminderBot(irc.IRCClient):
             self.say(channel, self.receiver.get_response())
         if not msg.startswith(self.nickname):    
             return
-        cmd = Command.parse(user, msg[msg.index(" ") + 1:])
+        msg = msg[msg.index(' ') + 1:]
+        parts = msg.strip().split(' ')
+        if parts[0] == "help":
+            if len(parts) > 1:
+                if parts[1] not in fundesc:
+                    self.say(channel, "No such function {0}.".format(parts[1]))
+                else:
+                    self.say(channel, fundesc[parts[1]])
+                return
+            self.say(channel, '\n'.join(helper for helper in helpers))
+            return
+        cmd = Command.parse(user, msg)
         if cmd is None:
+            self.say(channel, "Invalid command.\n" + fundesc[parts[0]])
             return
         print("Parsed command for function {0}.".format(cmd.fn))
         self.requests.send("{0}@{1}@{2}@{3}@{4}@{5}".format(
